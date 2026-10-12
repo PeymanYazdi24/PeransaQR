@@ -1,0 +1,837 @@
+عالی — اسم مخزن `PeransaQR` ثبت شد ✅ و یک خبر خوب: با یک تصمیم فنی کوچک، **دیگر حتی لازم نیست username خود را هم بگویید**. نسخهٔ جدید `index.html` را طوری ساختم که آدرس سایت را **خودکار از همان صفحه‌ای که باز شده** برداشته و داخل QRها می‌گذارد — یعنی وقتی فایل از `https://USERNAME.github.io/PeransaQR` باز شود، همهٔ برچسب‌ها دقیقاً به همان آدرس اشاره می‌کنند. خطای تایپی در لینک QR عملاً منتفی می‌شود.
+
+دو خط CONFIG را هم از قبل پر کردم:
+- **لینک CSV شیت شما** (همان gviz که تستش کردید و جواب داد) ✅
+- **siteUrl**: خالی — خودکار پر می‌شود
+
+ضمناً راهنمای داخل پنل را هم به جریان جدید به‌روز کردم (دیگر مرحلهٔ «ویرایش کد در گیت‌هاب» را ندارد). و اگر کسی فایل را از روی کامپیوتر خودش (file://) باز کند، سایت اجازهٔ چاپ نمی‌دهد و هشدار می‌دهد — تا هیچ برچسب خرابی چاپ نشود.
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="قیمت‌یاب QR فروشگاه پرنسا — با اسکن کد روی برچسب، نام، کد و قیمت روز کالا را ببینید.">
+<meta name="theme-color" content="#07070B">
+<title>پرنسا — قیمت‌یاب QR</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%23FF2D7E' stroke-width='8'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ================= توکن‌های طراحی ================= */
+:root{
+  --bg:#07070B;
+  --card:#101019;
+  --card-2:#0D0D15;
+  --line:rgba(255,255,255,.08);
+  --ink:#F6F5FA;
+  --muted:#A5A3B4;
+  --pink:#FF2D7E;
+  --pink-soft:rgba(255,45,126,.14);
+  --pink-border:rgba(255,45,126,.32);
+  --ice:#6FE3FF;
+  --ice-soft:rgba(111,227,255,.12);
+  --gold:#FFC85C;
+  --paper:#FFFFFF;
+  --print-line:#D9D9E0;
+  --r-lg:28px; --r-md:14px; --r-sm:10px; --pill:999px;
+  --sp-1:8px; --sp-2:12px; --sp-3:16px; --sp-4:24px; --sp-5:32px; --sp-6:48px; --sp-7:64px;
+  --t:.3s ease;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:Vazirmatn,'Segoe UI',Tahoma,sans-serif;
+  font-size:16px; line-height:1.7;
+  min-height:100dvh;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(640px 420px at 88% -8%, rgba(255,45,126,.11), transparent 62%),
+    radial-gradient(520px 380px at 4% 108%, rgba(111,227,255,.07), transparent 60%);
+}
+main{position:relative; z-index:1}
+img,svg{max-width:100%}
+button{font-family:inherit; cursor:pointer}
+input,textarea,select{font-family:inherit}
+a{color:var(--ice)}
+:focus-visible{outline:2px solid var(--pink); outline-offset:2px; border-radius:4px}
+
+/* ================= صفحهٔ اسکن ================= */
+.scan-wrap{
+  min-height:100dvh; display:grid; place-items:center;
+  padding:var(--sp-4);
+}
+.neon-card{
+  width:min(560px,100%);
+  background:linear-gradient(180deg,var(--card),var(--card-2));
+  border:1px solid var(--pink-border);
+  border-radius:var(--r-lg);
+  box-shadow:0 0 46px rgba(255,45,126,.15), inset 0 0 34px rgba(255,45,126,.05);
+  padding:var(--sp-6) var(--sp-5);
+  text-align:center;
+}
+.scan-logo{width:min(196px,52vw); display:block; margin:0 auto var(--sp-4)}
+.scan-foot{
+  text-align:center; color:var(--muted); font-size:13px;
+  margin-top:var(--sp-4);
+}
+.state{animation:fadein .4s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.p-name{font-size:clamp(22px,5.4vw,30px); font-weight:800; line-height:1.4}
+.chip{
+  display:inline-block; margin-top:var(--sp-2);
+  border:1px solid rgba(111,227,255,.5); color:var(--ice);
+  border-radius:var(--pill); padding:4px 14px;
+  font-size:14px; font-weight:600; letter-spacing:.04em;
+  background:var(--ice-soft);
+}
+.price-line{margin-top:var(--sp-4); display:flex; align-items:baseline; justify-content:center; gap:10px; flex-wrap:wrap}
+.price-line .price{
+  font-weight:800; font-size:clamp(52px,13vw,90px);
+  line-height:1.05; letter-spacing:-.02em;
+  text-shadow:0 0 26px rgba(255,45,126,.35);
+}
+.price-line .price.unset{font-size:clamp(26px,7vw,40px); color:var(--gold)}
+.price-line .unit{font-size:clamp(16px,4vw,22px); color:var(--muted); font-weight:600}
+.note{margin-top:var(--sp-3); color:var(--gold); font-size:14px}
+.meta{
+  margin-top:var(--sp-4); padding-top:var(--sp-3);
+  border-top:1px solid var(--line);
+  color:var(--muted); font-size:13px;
+}
+.loader{
+  width:62px; height:62px; margin:var(--sp-4) auto;
+  border-radius:50%;
+  border:3px solid rgba(255,45,126,.22);
+  border-top-color:var(--pink);
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(1turn)}}
+.big-q{
+  width:74px; height:74px; margin:0 auto var(--sp-3);
+  border:2px solid var(--pink-border); border-radius:50%;
+  display:grid; place-items:center;
+  font-size:34px; font-weight:800; color:var(--pink);
+}
+.state h2{font-size:20px; font-weight:700}
+.state p{color:var(--muted); margin-top:var(--sp-2); font-size:15px}
+.btn{
+  display:inline-flex; align-items:center; gap:8px;
+  border:none; border-radius:var(--pill);
+  padding:11px 26px; font-size:15px; font-weight:700;
+  background:var(--pink); color:#fff;
+  transition:transform var(--t), box-shadow var(--t), background var(--t);
+}
+.btn:hover{background:#FF4A90; box-shadow:0 0 22px rgba(255,45,126,.4); transform:translateY(-1px)}
+.btn.ghost{
+  background:transparent; color:var(--ink);
+  border:1px solid var(--line);
+}
+.btn.ghost:hover{border-color:var(--pink-border); background:var(--pink-soft); box-shadow:none}
+.btn:disabled{opacity:.45; cursor:not-allowed; transform:none; box-shadow:none}
+
+/* ================= پنل ================= */
+.panel-main{max-width:1060px; margin:0 auto; padding:var(--sp-6) var(--sp-4) var(--sp-7)}
+.panel-head{display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap; margin-bottom:var(--sp-5)}
+.head-logo{width:72px; flex:0 0 auto}
+.head-titles h1{font-size:22px; font-weight:800}
+.head-titles p{color:var(--muted); font-size:14px}
+.tabs{display:flex; gap:6px; margin-inline-start:auto; background:var(--card); border:1px solid var(--line); border-radius:var(--pill); padding:5px}
+.tab-btn{
+  border:none; background:transparent; color:var(--muted);
+  border-radius:var(--pill); padding:9px 20px;
+  font-size:14px; font-weight:600;
+  transition:color var(--t), background var(--t);
+}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn.active{background:#1B1B28; color:var(--ink)}
+.warn{
+  display:flex; gap:10px; align-items:flex-start;
+  background:rgba(255,200,92,.08); border:1px solid rgba(255,200,92,.35);
+  color:var(--gold); border-radius:var(--r-md);
+  padding:var(--sp-3) var(--sp-4); font-size:14px; margin-bottom:var(--sp-4);
+}
+.ok-note{
+  display:flex; gap:10px; align-items:flex-start;
+  background:var(--ice-soft); border:1px solid rgba(111,227,255,.35);
+  color:var(--ice); border-radius:var(--r-md);
+  padding:var(--sp-3) var(--sp-4); font-size:14px; margin-bottom:var(--sp-4);
+}
+.controls{
+  background:var(--card); border:1px solid var(--line);
+  border-radius:var(--r-lg); padding:var(--sp-5);
+  display:grid; gap:var(--sp-4); margin-bottom:var(--sp-4);
+}
+.controls label{font-size:14px; font-weight:700; display:block; margin-bottom:var(--sp-2)}
+.hint{color:var(--muted); font-size:12.5px; margin-top:6px}
+textarea#pasteBox{
+  width:100%; min-height:120px; resize:vertical;
+  background:var(--card-2); color:var(--ink);
+  border:1px solid var(--line); border-radius:var(--r-md);
+  padding:var(--sp-3); font-size:13.5px; line-height:1.9;
+}
+textarea#pasteBox:focus{border-color:var(--pink-border); outline:none}
+.row{display:flex; gap:var(--sp-2); flex-wrap:wrap; align-items:center}
+.opt-row{
+  display:flex; gap:var(--sp-4); flex-wrap:wrap; align-items:center;
+  border-top:1px dashed var(--line); padding-top:var(--sp-4);
+}
+.size-pick{display:flex; gap:6px; background:var(--card-2); border:1px solid var(--line); border-radius:var(--pill); padding:4px}
+.size-pick button{
+  border:none; background:transparent; color:var(--muted);
+  padding:7px 16px; border-radius:var(--pill); font-size:13px; font-weight:600;
+  transition:background var(--t), color var(--t);
+}
+.size-pick button.active{background:var(--pink-soft); color:var(--pink)}
+input#labelFilter{
+  flex:1 1 200px; max-width:320px;
+  background:var(--card-2); color:var(--ink);
+  border:1px solid var(--line); border-radius:var(--pill);
+  padding:9px 18px; font-size:14px;
+}
+input#labelFilter:focus{border-color:var(--pink-border); outline:none}
+#parseStatus{font-size:14px; min-height:24px}
+#parseStatus.err{color:var(--gold)}
+#parseStatus.ok{color:var(--ice)}
+#gridHint{color:var(--muted); font-size:14px; text-align:center; padding:var(--sp-6) 0}
+
+/* شبکهٔ برچسب‌ها */
+#labelGrid{display:grid; gap:14px; grid-template-columns:repeat(2,1fr)}
+#labelGrid[data-size="s"]{grid-template-columns:repeat(4,1fr); --qr:104px}
+#labelGrid[data-size="m"]{grid-template-columns:repeat(3,1fr); --qr:132px}
+#labelGrid[data-size="l"]{grid-template-columns:repeat(2,1fr); --qr:172px}
+@media (max-width:640px){
+  #labelGrid,#labelGrid[data-size="s"],#labelGrid[data-size="m"],#labelGrid[data-size="l"]{grid-template-columns:repeat(2,1fr)}
+}
+.label{
+  background:var(--paper); color:#111114;
+  border:1px solid var(--print-line); border-radius:var(--r-md);
+  padding:12px 10px 10px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  break-inside:avoid;
+}
+.qr-box{
+  width:var(--qr,132px); height:var(--qr,132px);
+  padding:8px; background:#fff;
+  border:1px solid var(--print-line); border-radius:var(--r-sm);
+  margin-inline:auto;
+}
+.qr-box img,.qr-box canvas{width:100%!important; height:100%!important; display:block}
+.label-name{font-size:13px; font-weight:700; text-align:center; line-height:1.5}
+.label-code{
+  font-size:11.5px; font-weight:600; letter-spacing:.05em;
+  border:1px solid #111114; border-radius:var(--pill);
+  padding:1px 12px;
+}
+.label-brand{font-family:Pacifico,cursive; font-size:12px; color:var(--pink)}
+
+/* راهنما */
+.guide{display:grid; gap:var(--sp-3)}
+.step{
+  display:flex; gap:var(--sp-3);
+  background:var(--card); border:1px solid var(--line);
+  border-radius:var(--r-md); padding:var(--sp-4);
+}
+.step-num{
+  flex:0 0 34px; width:34px; height:34px;
+  border:1.5px solid var(--pink); color:var(--pink);
+  border-radius:50%; display:grid; place-items:center;
+  font-weight:800; font-size:15px;
+}
+.step-num.done{background:var(--ice-soft); border-color:rgba(111,227,255,.5); color:var(--ice)}
+.step h3{font-size:15.5px; font-weight:700}
+.step p{color:var(--muted); font-size:14px; margin-top:4px}
+.step code{
+  background:var(--card-2); border:1px solid var(--line);
+  border-radius:6px; padding:1px 7px; font-size:12.5px; color:var(--ice);
+  font-family:Consolas,monospace;
+}
+.cfg-box{position:relative}
+pre#cfgCode{
+  direction:ltr; text-align:left;
+  background:#0B0B12; border:1px solid var(--line); border-radius:var(--r-md);
+  padding:var(--sp-4); overflow-x:auto;
+  font-family:Consolas,Menlo,monospace; font-size:13px; line-height:1.9;
+  color:#D8D6E6;
+}
+#btnCopyCfg{
+  position:absolute; top:10px; inset-inline-end:10px;
+  border:1px solid var(--line); background:var(--card);
+  color:var(--ink); border-radius:var(--pill);
+  padding:6px 14px; font-size:12px; font-weight:600;
+  transition:border-color var(--t);
+}
+#btnCopyCfg:hover{border-color:var(--pink-border)}
+.panel-foot{color:var(--muted); font-size:13px; text-align:center; margin-top:var(--sp-6)}
+
+/* ================= چاپ ================= */
+@media print{
+  @page{size:A4; margin:8mm}
+  html,body{background:#fff!important}
+  body::before{display:none}
+  .no-print,#scanView{display:none!important}
+  .panel-main{max-width:none; padding:0}
+  #labelGrid{gap:3.5mm}
+  #labelGrid[data-size="s"]{grid-template-columns:repeat(4,1fr)}
+  #labelGrid[data-size="m"]{grid-template-columns:repeat(3,1fr)}
+  #labelGrid[data-size="l"]{grid-template-columns:repeat(2,1fr)}
+  #labelGrid[data-size="s"] .qr-box{width:24mm; height:24mm}
+  #labelGrid[data-size="m"] .qr-box{width:30mm; height:30mm}
+  #labelGrid[data-size="l"] .qr-box{width:42mm; height:42mm}
+  .label{border:1px solid #C9C9D2; border-radius:4mm; padding:3mm 2mm 2.5mm}
+  .label-name{font-size:3.4mm}
+  .label-code{font-size:3mm; color:#111}
+  .label-brand{font-size:2.8mm}
+}
+
+/* کاهش حرکت */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none!important; transition:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ====== لوگوی نئون (تعریف یک‌بار، استفاده در دو نما) ====== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="fGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fBlur" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <g id="neonLogo">
+      <circle cx="120" cy="120" r="106" fill="none" stroke="#FF2D7E" stroke-width="9" opacity=".16" filter="url(#fBlur)"/>
+      <circle cx="120" cy="120" r="106" fill="none" stroke="#FF2D7E" stroke-width="3" filter="url(#fGlow)"/>
+      <g transform="translate(100.8,40) scale(1.6)" filter="url(#fGlow)">
+        <path d="M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11z" fill="none" stroke="#FFC85C" stroke-width="1.6"/>
+      </g>
+      <text x="120" y="114" text-anchor="middle" font-family="Pacifico,cursive" font-size="34"
+            fill="#FFDCE9" stroke="#FF2D7E" stroke-width=".5" filter="url(#fGlow)">Peransa</text>
+      <g stroke="#6FE3FF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#fGlow)">
+        <path d="M15 134 Q120 170 225 134"/>
+        <g transform="translate(45,160)">
+          <path d="M-10 3 Q-10 -5 -3 -3.5 Q0 -2.5 0 0.5 Q0 -2.5 3 -3.5 Q10 -5 10 3"/>
+          <path d="M-10 3 Q0 7 10 3"/>
+          <path d="M-8 -4.5 L-6 -11 M8 -4.5 L6 -11"/>
+        </g>
+        <g transform="translate(80,163)">
+          <path d="M-5 -8 L-3.2 -1 M5 -8 L3.2 -1"/>
+          <path d="M-8 -1 L8 -1"/>
+          <path d="M-8 -1 Q-12 12 -9 25 M8 -1 Q12 12 9 25"/>
+          <path d="M-9 25 Q0 28 9 25"/>
+        </g>
+        <g transform="translate(120,158)">
+          <path d="M-12 0 L12 0"/>
+          <path d="M-12 0 Q-13.5 7 -5 9 Q0 12 5 9 Q13.5 7 12 0"/>
+        </g>
+        <g transform="translate(160,166) scale(.92)">
+          <path d="M-10 3 Q-10 -5 -3 -3.5 Q0 -2.5 0 0.5 Q0 -2.5 3 -3.5 Q10 -5 10 3"/>
+          <path d="M-10 3 Q0 7 10 3"/>
+          <path d="M-8 -4.5 L-6 -11 M8 -4.5 L6 -11"/>
+        </g>
+      </g>
+      <g fill="#FFC85C" filter="url(#fGlow)">
+        <rect x="43.3" y="140.8" width="3.4" height="8" rx="1.7"/>
+        <rect x="78.3" y="147.4" width="3.4" height="8" rx="1.7"/>
+        <rect x="118.3" y="150" width="3.4" height="8" rx="1.7"/>
+        <rect x="158.3" y="147.4" width="3.4" height="8" rx="1.7"/>
+        <rect x="193.3" y="140.8" width="3.4" height="8" rx="1.7"/>
+      </g>
+    </g>
+  </defs>
+</svg>
+
+<!-- ====== نمای ۱: صفحهٔ اسکن (باز می‌شود با ?id=…) ====== -->
+<main id="scanView" hidden>
+  <div class="scan-wrap">
+    <div>
+      <div class="neon-card">
+        <div class="state" id="stLoading">
+          <svg class="scan-logo" viewBox="0 0 240 240" role="img" aria-label="لوگوی نئونی پرنسا"><use href="#neonLogo"/></svg>
+          <div class="loader" aria-hidden="true"></div>
+          <p>در حال دریافت قیمت روز…</p>
+        </div>
+        <div class="state" id="stResult" hidden>
+          <svg class="scan-logo" viewBox="0 0 240 240" role="img" aria-label="لوگوی نئونی پرنسا"><use href="#neonLogo"/></svg>
+          <h1 class="p-name" id="pName"></h1>
+          <div class="chip" id="pCode"></div>
+          <div class="price-line">
+            <span class="price" id="pPrice"></span>
+            <span class="unit" id="pUnit">تومان</span>
+          </div>
+          <p class="note" id="pNote" hidden></p>
+          <div class="meta">آخرین به‌روزرسانی: <span id="pTime"></span></div>
+        </div>
+        <div class="state" id="stNotFound" hidden>
+          <div class="big-q" aria-hidden="true">؟</div>
+          <h2>کالا یافت نشد</h2>
+          <p>این کد در فهرست قیمت فروشگاه پیدا نشد؛ ممکن است فهرست هنوز به‌روز نشده باشد.</p>
+        </div>
+        <div class="state" id="stNoConfig" hidden>
+          <div class="big-q" aria-hidden="true">⚙</div>
+          <h2>اتصال به فهرست قیمت برقرار نیست</h2>
+          <p>لینک گوگل‌شیت در فایل تنظیم نشده است. تب «راهنمای راه‌اندازی» را ببینید.</p>
+        </div>
+        <div class="state" id="stError" hidden>
+          <div class="big-q" aria-hidden="true">!</div>
+          <h2>دریافت قیمت ناموفق بود</h2>
+          <p>اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</p>
+          <p style="margin-top:16px"><button class="btn" id="btnRetry">تلاش دوباره</button></p>
+        </div>
+      </div>
+      <p class="scan-foot">قیمت‌ها به‌صورت لحظه‌ای از سامانهٔ فروشگاه پرنسا خوانده می‌شود</p>
+    </div>
+  </div>
+</main>
+
+<!-- ====== نمای ۲: پنل مدیریت (بدون پارامتر) ====== -->
+<main id="panelView" hidden>
+  <div class="panel-main">
+    <header class="panel-head">
+      <svg class="head-logo" viewBox="0 0 240 240" role="img" aria-label="لوگوی نئونی پرنسا"><use href="#neonLogo"/></svg>
+      <div class="head-titles">
+        <h1>پنل برچسب‌های QR</h1>
+        <p>فروشگاه پوشاک زیر پرنسا</p>
+      </div>
+      <nav class="tabs" aria-label="بخش‌های پنل">
+        <button class="tab-btn active" data-tab="labels" aria-selected="true">تولید برچسب</button>
+        <button class="tab-btn" data-tab="guide" aria-selected="false">راهنمای راه‌اندازی</button>
+      </nav>
+    </header>
+
+    <!-- ---------- تب تولید برچسب ---------- -->
+    <section id="tab-labels">
+      <div class="warn" id="configWarn" hidden>
+        <span aria-hidden="true">⚠</span>
+        <span id="configWarnText"></span>
+      </div>
+      <div class="ok-note" id="urlInfo" hidden>
+        <span aria-hidden="true">✓</span>
+        <span id="urlInfoText"></span>
+      </div>
+
+      <div class="controls no-print">
+        <div>
+          <label for="pasteBox">دادهٔ کالاها — از گوگل‌شیت کپی و اینجا paste کنید (یا از دکمهٔ زیر استفاده کنید)</label>
+          <textarea id="pasteBox" placeholder="شناسه ⇄ کد ⇄ دسته ⇄ نام کالا ⇄ قیمت (تومان)&#10;1790940521221 ⇄ C1 ⇄ سوتین ⇄ سوتین اسفنجی ⇄ 750000"></textarea>
+          <p class="hint">علامت ⇄ نمایش ستون‌هاست؛ کپی مستقیم از گوگل‌شیت کافی است. اگر ستون «شناسه» باشد لینک QR با شناسهٔ یکتا ساخته می‌شود.</p>
+        </div>
+        <div class="row">
+          <button class="btn" id="btnFetch">دریافت از گوگل‌شیت</button>
+          <button class="btn ghost" id="btnParse">شناسایی دادهٔ paste‌شده</button>
+          <button class="btn ghost" id="btnClear">پاک‌کردن</button>
+        </div>
+        <div class="opt-row">
+          <div>
+            <label>اندازهٔ برچسب</label>
+            <div class="size-pick" role="group" aria-label="اندازهٔ برچسب">
+              <button data-size="s">کوچک</button>
+              <button data-size="m" class="active">متوسط</button>
+              <button data-size="l">بزرگ</button>
+            </div>
+          </div>
+          <div style="flex:1">
+            <label for="labelFilter">جست‌وجو</label>
+            <input type="text" id="labelFilter" placeholder="مثلاً سوتین یا C1…">
+          </div>
+          <div style="align-self:flex-end">
+            <button class="btn" id="btnPrint">🖨 چاپ برچسب‌ها</button>
+          </div>
+        </div>
+        <div>
+          <p id="parseStatus" aria-live="polite"></p>
+          <p id="sheetHint" class="hint" hidden>لینک گوگل‌شیت هنوز در <code>CONFIG.sheetCsvUrl</code> تنظیم نشده؛ تا آن موقع از paste استفاده کنید.</p>
+        </div>
+      </div>
+
+      <p id="gridHint">برای شروع، دادهٔ کالاها را وارد کنید — برچسب‌ها همین‌جا ساخته می‌شوند.</p>
+      <div id="labelGrid" data-size="m" aria-label="برچسب‌های QR"></div>
+    </section>
+
+    <!-- ---------- تب راهنما ---------- -->
+    <section id="tab-guide" class="guide no-print" hidden>
+      <div class="step">
+        <div class="step-num done">✓</div>
+        <div>
+          <h3>فهرست کالاها در گوگل‌شیت — انجام شد</h3>
+          <p>لینک CSV شیت شما از قبل داخل همین فایل تنظیم شده است؛ نیازی به ویرایش کد نیست. از این به بعد برای افزودن یا ویرایش کالا، فقط همان جدول را در شیت ادامه دهید. <strong>ستون «شناسه» را هرگز حذف یا تغییر ندهید</strong> — QRهای چاپ‌شده با همان شناسه‌ها کار می‌کنند.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">۲</div>
+        <div>
+          <h3>آپلود فایل در گیت‌هاب</h3>
+          <p>مخزن <code>PeransaQR</code> را باز کنید و روی پیوند <code>uploading an existing file</code> بزنید، فایل <code>index.html</code> را بکشید و رها کنید و <code>Commit changes</code> بزنید. دقت کنید نام فایل دقیقاً <code>index.html</code> باشد و مخزن <strong>Public</strong> بماند.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">۳</div>
+        <div>
+          <h3>فعال‌سازی سایت (GitHub Pages)</h3>
+          <p>در مخزن: <code>Settings → Pages</code> ← در بخش Branch گزینهٔ <code>main</code> را انتخاب و <code>Save</code> کنید. حدود یک دقیقه بعد سایت در آدرس <code>https://USERNAME.github.io/PeransaQR/</code> فعال می‌شود.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">۴</div>
+        <div>
+          <h3>باز کردن پنل از آدرس واقعی سایت</h3>
+          <p>همان آدرس <code>github.io</code> را در مرورگر باز کنید. همین صفحه نمایش داده می‌شود و آدرس داخل QRها به‌صورت خودکار از همین نشانی ساخته می‌شود — بدون هیچ ویرایشی. (اگر فایل را از کامپیوتر خودتان باز کنید، چاپ قفل می‌شود تا برچسب خراب تولید نشود.)</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">۵</div>
+        <div>
+          <h3>برچسب تست</h3>
+          <p>در تب «تولید برچسب» دکمهٔ <code>دریافت از گوگل‌شیت</code> را بزنید تا ۸۷ کالا بیاید، با جست‌وجو فقط یکی را نگه دارید، چاپ کنید و با گوشی اسکن کنید. اگر صفحهٔ قیمت با نام و کد و قیمت درست آمد، همه‌چیز آماده است.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">۶</div>
+        <div>
+          <h3>چاپ کامل</h3>
+          <p>جست‌وجو را خالی کنید، اندازهٔ برچسب را انتخاب کنید و چاپ بگیرید. برای چسباندن روی کالاها، برچسب را صاف و بدون تا بچسبانید تا اسکنر راحت بخواند.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">★</div>
+        <div>
+          <h3>از این به بعد</h3>
+          <p>تغییر قیمت = فقط یک عدد در گوگل‌شیت. برچسب‌های چاپ‌شده برای همیشه معتبر می‌مانند و نیازی به چاپ دوباره نیست. کالای جدید = یک ردیف با شناسهٔ یکتا در شیت + چاپ یک برچسب.</p>
+        </div>
+      </div>
+
+      <div class="cfg-box no-print">
+        <button id="btnCopyCfg">کپی کد</button>
+        <pre id="cfgCode">const CONFIG = {
+  siteUrl:     "",  // خالی بماند — آدرس QRها خودکار از آدرس همین صفحه ساخته می‌شود
+  sheetCsvUrl: "https://docs.google.com/spreadsheets/d/1NFpHLZ9R156qTc8vQqb_FZHP-cTcZybWVSDHDvGQqJc/gviz/tq?tqx=out:csv"
+};</pre>
+      </div>
+    </section>
+
+    <footer class="panel-foot no-print">پرنسا · سامانهٔ قیمت‌یاب QR — برچسب را یک‌بار چاپ کنید، قیمت را همیشه به‌روز کنید.</footer>
+  </div>
+</main>
+
+<script>
+/* ================= تنظیمات سایت — فقط این دو خط را ویرایش کنید ================= */
+const CONFIG = {
+  siteUrl:     "",  // خالی بماند — آدرس QRها خودکار از آدرس همین صفحه ساخته می‌شود
+  sheetCsvUrl: "https://docs.google.com/spreadsheets/d/1NFpHLZ9R156qTc8vQqb_FZHP-cTcZybWVSDHDvGQqJc/gviz/tq?tqx=out:csv"  // لینک CSV شیت قیمت پرنسا
+};
+
+/* ================= ابزارهای عمومی ================= */
+const $ = s => document.querySelector(s);
+const FA = new Intl.NumberFormat('fa-IR');
+const faTime = new Intl.DateTimeFormat('fa-IR', { dateStyle:'medium', timeStyle:'short' });
+const show = (el, on) => { if (el) el.hidden = !on; };
+const DIG = {'۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9',
+             '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+const toEn = s => String(s).replace(/[۰-۹٠-٩]/g, d => DIG[d]);
+function parseNum(v){
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(toEn(String(v)).replace(/[,،٬\s]/g,''));
+  return isFinite(n) ? n : null;
+}
+
+/* آدرس پایهٔ سایت: از CONFIG یا از خود صفحه (فقط روی وب واقعی) */
+function siteBase(){
+  const cfg = (CONFIG.siteUrl || '').trim();
+  if (cfg) return cfg.replace(/\/+$/,'').replace(/\/index\.html?$/i,'');
+  if (/^https?:$/.test(location.protocol)){
+    return (location.origin + location.pathname).replace(/\/+$/,'').replace(/\/index\.html?$/i,'');
+  }
+  return '';  // file:// یا حالت‌های محلی — آدرس معتبری برای QR وجود ندارد
+}
+
+/* ================= تجزیهٔ جدول (TSV از شیت یا CSV منتشرشده) ================= */
+function detectDelim(text){
+  const nl = text.indexOf('\n');
+  const head = nl > -1 ? text.slice(0, nl) : text;
+  return head.split('\t').length > head.split(',').length ? '\t' : ',';
+}
+function splitLine(line, delim){
+  const out = []; let f = '', q = false;
+  for (let i = 0; i < line.length; i++){
+    const c = line[i];
+    if (q){
+      if (c === '"'){ if (line[i+1] === '"'){ f += '"'; i++; } else q = false; }
+      else f += c;
+    }
+    else if (c === '"') q = true;
+    else if (c === delim){ out.push(f); f = ''; }
+    else f += c;
+  }
+  out.push(f);
+  return out;
+}
+function normHead(s){ return String(s).replace(/[\u200c\s()]/g,'').toLowerCase(); }
+function findIdx(heads, keys){
+  for (let i = 0; i < heads.length; i++)
+    for (const k of keys)
+      if (heads[i] === k || heads[i].startsWith(k)) return i;
+  return -1;
+}
+function parseTable(text){
+  const delim = detectDelim(text);
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+  if (!lines.length) return [];
+  const head = splitLine(lines[0], delim).map(normHead);
+  let idx = {
+    id:    findIdx(head, ['شناسه','id']),
+    code:  findIdx(head, ['کد','code']),
+    name:  findIdx(head, ['نام','عنوان','name','title']),
+    price: findIdx(head, ['قیمت','price']),
+    note:  findIdx(head, ['توضیح','note'])
+  };
+  let start = 1;
+  if (idx.name < 0 || idx.price < 0){          // بدون سطر عنوان: ترتیب ستون‌های اکسل پیوست
+    idx = { id:0, code:1, name:3, price:4, note:-1 };
+    start = 0;
+  }
+  const rows = [];
+  for (let i = start; i < lines.length; i++){
+    const c = splitLine(lines[i], delim);
+    const get = j => (j >= 0 && j < c.length) ? c[j].trim() : '';
+    const name = get(idx.name), price = parseNum(get(idx.price));
+    if (!name && price === null) continue;
+    rows.push({ id: get(idx.id), code: get(idx.code), name: name || '—', price, note: get(idx.note) });
+  }
+  return rows;
+}
+
+/* ================= صفحهٔ اسکن ================= */
+const params = new URLSearchParams(location.search);
+const scanKey = (params.get('id') || params.get('code') || '').trim();
+const scanStates = ['stLoading','stResult','stNotFound','stNoConfig','stError'];
+const hideScanStates = () => scanStates.forEach(id => show($('#' + id), false));
+
+async function fetchProducts(){
+  const url = CONFIG.sheetCsvUrl + (CONFIG.sheetCsvUrl.includes('?') ? '&' : '?') + '_=' + Date.now();
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return parseTable(await res.text());
+}
+function renderProduct(p){
+  $('#pName').textContent = p.name;
+  const chip = $('#pCode');
+  if (p.code){ chip.hidden = false; chip.textContent = 'کد ' + p.code; } else chip.hidden = true;
+  const priceEl = $('#pPrice'), unitEl = $('#pUnit');
+  priceEl.classList.remove('unset');
+  if (p.price === null){ priceEl.textContent = 'قیمت ثبت نشده'; priceEl.classList.add('unset'); unitEl.hidden = true; }
+  else if (p.price === 0){ priceEl.textContent = 'استعلام قیمت'; priceEl.classList.add('unset'); unitEl.hidden = true; }
+  else { priceEl.textContent = FA.format(p.price); unitEl.hidden = false; }
+  const note = $('#pNote');
+  if (p.note){ note.hidden = false; note.textContent = p.note; } else note.hidden = true;
+  $('#pTime').textContent = faTime.format(new Date());
+  show($('#stResult'), true);
+}
+async function loadScan(){
+  hideScanStates();
+  show($('#stLoading'), true);
+  if (!CONFIG.sheetCsvUrl || CONFIG.sheetCsvUrl.includes('…')){
+    show($('#stLoading'), false); show($('#stNoConfig'), true); return;
+  }
+  try{
+    const rows = await fetchProducts();
+    const p = rows.find(r => r.id && String(r.id) === scanKey)
+           || rows.find(r => r.code && r.code === scanKey);
+    show($('#stLoading'), false);
+    if (!p){ show($('#stNotFound'), true); return; }
+    renderProduct(p);
+  } catch(e){
+    show($('#stLoading'), false); show($('#stError'), true);
+  }
+}
+
+/* ================= پنل: داده و برچسب‌ها ================= */
+let products = [];
+function productUrl(p){
+  const base = siteBase();
+  if (!base) return '';
+  const useId = p.id !== '';
+  const key = useId ? p.id : p.code;
+  return base + '/?' + (useId ? 'id' : 'code') + '=' + encodeURIComponent(key);
+}
+function setParseStatus(msg, cls){
+  const el = $('#parseStatus');
+  el.textContent = msg;
+  el.className = cls || '';
+}
+function buildLabels(){
+  const grid = $('#labelGrid');
+  grid.innerHTML = '';
+  const q = $('#labelFilter').value.trim();
+  const list = products.filter(p => !q || (p.name + ' ' + p.code + ' ' + p.id).includes(q));
+  const hint = $('#gridHint');
+  if (!products.length){
+    hint.hidden = false;
+    hint.textContent = 'برای شروع، «دریافت از گوگل‌شیت» را بزنید یا دادهٔ کالاها را paste کنید.';
+    return;
+  }
+  if (!siteBase()){
+    hint.hidden = false;
+    hint.textContent = 'برای ساخت برچسب، این صفحه باید از آدرس واقعی سایت (گیت‌هاب‌پیج) باز شود — راهنما، گام ۳ و ۴.';
+    return;
+  }
+  if (!list.length){
+    hint.hidden = false;
+    hint.textContent = 'موردی با این جست‌وجو پیدا نشد.';
+    return;
+  }
+  if (typeof QRCode === 'undefined'){
+    hint.hidden = false;
+    hint.textContent = 'کتابخانهٔ QR بارگذاری نشده — اتصال اینترنت را بررسی کنید و صفحه را دوباره باز کنید.';
+    return;
+  }
+  hint.hidden = true;
+  const frag = document.createDocumentFragment();
+  for (const p of list){
+    const lab = document.createElement('div'); lab.className = 'label';
+    const qr  = document.createElement('div'); qr.className = 'qr-box';
+    try{
+      new QRCode(qr, {
+        text: productUrl(p), width: 220, height: 220,
+        colorDark: '#111114', colorLight: '#FFFFFF',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }catch(e){}
+    const nm = document.createElement('div'); nm.className = 'label-name'; nm.textContent = p.name;
+    const cd = document.createElement('div'); cd.className = 'label-code'; cd.textContent = p.code || '';
+    const br = document.createElement('div'); br.className = 'label-brand'; br.textContent = 'Peransa';
+    lab.append(qr, nm, cd, br);
+    frag.appendChild(lab);
+  }
+  grid.appendChild(frag);
+}
+function afterLoad(){
+  if (products.length){
+    setParseStatus(FA.format(products.length) + ' کالا شناسایی شد — برچسب‌ها آماده است.', 'ok');
+  } else {
+    setParseStatus('ردیفی شناسایی نشد — مطمئن شوید سطر عنوان (شناسه، کد، نام، قیمت) را هم کپی کرده‌اید.', 'err');
+  }
+  buildLabels();
+}
+
+/* ================= رویدادهای پنل ================= */
+$('#btnParse').addEventListener('click', () => {
+  products = parseTable($('#pasteBox').value);
+  afterLoad();
+});
+$('#btnFetch').addEventListener('click', async function(){
+  if (!CONFIG.sheetCsvUrl || CONFIG.sheetCsvUrl.includes('…')){
+    setParseStatus('لینک گوگل‌شیت در CONFIG تنظیم نشده است.', 'err');
+    return;
+  }
+  this.disabled = true; const old = this.textContent; this.textContent = 'در حال دریافت…';
+  try{
+    products = await fetchProducts();
+    afterLoad();
+  } catch(e){
+    setParseStatus('دریافت از گوگل‌شیت ناموفق بود — اتصال اینترنت و دسترسی شیت را بررسی کنید.', 'err');
+  } finally {
+    this.disabled = false; this.textContent = old;
+  }
+});
+$('#btnClear').addEventListener('click', () => {
+  $('#pasteBox').value = '';
+  products = [];
+  $('#labelGrid').innerHTML = '';
+  $('#gridHint').hidden = false;
+  $('#gridHint').textContent = 'برای شروع، «دریافت از گوگل‌شیت» را بزنید یا دادهٔ کالاها را paste کنید.';
+  setParseStatus('', '');
+});
+let deb;
+$('#labelFilter').addEventListener('input', () => {
+  clearTimeout(deb);
+  deb = setTimeout(buildLabels, 250);
+});
+document.querySelectorAll('.size-pick button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.size-pick button').forEach(x => x.classList.toggle('active', x === b));
+    $('#labelGrid').dataset.size = b.dataset.size;
+  });
+});
+$('#btnPrint').addEventListener('click', () => {
+  if (!products.length){ setParseStatus('اول داده‌ها را بارگذاری کنید، بعد چاپ کنید.', 'err'); return; }
+  if (!siteBase()){ setParseStatus('چاپ ممکن نیست: این صفحه را از آدرس واقعی سایت (گیت‌هاب‌پیج) باز کنید.', 'err'); return; }
+  window.print();
+});
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(x => {
+      x.classList.toggle('active', x === b);
+      x.setAttribute('aria-selected', x === b ? 'true' : 'false');
+    });
+    show($('#tab-labels'), b.dataset.tab === 'labels');
+    show($('#tab-guide'),  b.dataset.tab === 'guide');
+  });
+});
+$('#btnCopyCfg').addEventListener('click', async function(){
+  try{
+    await navigator.clipboard.writeText($('#cfgCode').textContent.trim());
+    this.textContent = 'کپی شد ✓';
+  } catch(e){
+    this.textContent = 'کپی نشد — دستی انتخاب کنید';
+  }
+  setTimeout(() => { this.textContent = 'کپی کد'; }, 1800);
+});
+$('#btnRetry').addEventListener('click', loadScan);
+
+/* ================= شروع ================= */
+(function init(){
+  const isLive = /^https?:$/.test(location.protocol);
+  const warn = $('#configWarn');
+  if (!CONFIG.sheetCsvUrl || CONFIG.sheetCsvUrl.includes('…')){
+    show($('#sheetHint'), true);
+    warn.hidden = false;
+    $('#configWarnText').textContent = 'لینک گوگل‌شیت در CONFIG.sheetCsvUrl تنظیم نشده است؛ فعلاً از paste استفاده کنید یا لینک CSV را در فایل وارد کنید.';
+  }
+  if (!isLive){
+    warn.hidden = false;
+    $('#configWarnText').textContent = 'این فایل روی کامپیوتر باز شده است. برچسب‌ها فقط از آدرس واقعی سایت (گیت‌هاب‌پیج) درست ساخته می‌شوند — ابتدا فایل را روی گیت‌هاب آپلود و سایت را از همان‌جا باز کنید (راهنما، گام ۲ تا ۴).';
+  } else {
+    const base = siteBase();
+    $('#urlInfoText').textContent = 'آدرس درج‌شده در QRها (خودکار از همین صفحه): ' + base + '/?id=…';
+    show($('#urlInfo'), true);
+  }
+  if (scanKey){
+    show($('#panelView'), false);
+    show($('#scanView'), true);
+    document.title = 'قیمت کالا — پرنسا';
+    loadScan();
+  } else {
+    show($('#panelView'), true);
+  }
+})();
+</script>
+</body>
+</html>
+
+✅ **DELIVERED: پرنسا — قیمت‌یاب QR (نسخهٔ راه‌اندازی نهایی)**
+**CONCEPT:** ویترین نئونی در شب — صفحهٔ اسکن مثل تابلوی نئون مغازه، سطح برچسب مینیمال و سفید
+**SIGNATURE:** لوگوی نئون SVG زنده + کارت قیمت با حاشیهٔ نورانی
+
+**چه چیزهایی نسبت به نسخهٔ قبل عوض شد:**
+- `sheetCsvUrl` با لینک CSV شیت خودتان پر شده — هیچ ویرایش کدی لازم نیست
+- `siteUrl` خودکار از آدرس صفحه ساخته می‌شود — username هم لازم نیست
+- اگر فایل از کامپیوتر (نه سایت واقعی) باز شود، چاپ قفل و هشدار نمایش داده می‌شود
+- راهنمای داخلی به جریان جدید به‌روز شد + یک نوار آبی نشان می‌دهد دقیقاً چه آدرسی داخل QRها می‌رود
+
+**🔹 سه قدم باقی‌مانده — به همین ترتیب:**
+1. **آپلود:** در مخزن `PeransaQR` روی «uploading an existing file» بزنید و همین فایل `index.html` را بکشید داخل ← Commit changes
+2. **Pages:** در مخزن ← Settings ← Pages ← Branch را روی `main` بگذارید ← Save. یک دقیقه بعد سایت زنده است
+3. **تست:** آدرس `github.io` را باز کنید ← دکمهٔ «دریافت از گوگل‌شیت» ← ۸۷ کالا می‌آید ← یکی را با جست‌وجو نگه دارید، چاپ و اسکن کنید
+
+اگر صفحهٔ قیمت با درست آمد، جست‌وجو را خالی کنید و کل برچسب‌ها را چاپ کنید. هر جا گیر کردید، همین‌جا بگویید — مثلاً اگر بعد از فعال‌سازی Pages خطای 404 دیدید، معمولاً فقط چند دقیقه صبر می‌خواهد. 🚀
