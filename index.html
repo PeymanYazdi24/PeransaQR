@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="قیمت‌یاب QR فروشگاه پرنسا — با اسکن کد روی برچسب، نام، کد و قیمت روز کالا را ببینید.">
+<meta name="description" content="قیمت‌یاب QR فروشگاه پرنسا — با اسکن کد روی برچسب، کد و قیمت روز کالا را ببینید.">
 <meta name="theme-color" content="#07070B">
 <title>پرنسا — قیمت‌یاب QR</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%23FF2D7E' stroke-width='8'/></svg>">
@@ -76,7 +76,6 @@ a{color:var(--ice)}
 .state{animation:fadein .4s ease}
 @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-.p-name{font-size:clamp(22px,5.4vw,30px); font-weight:800; line-height:1.4}
 .chip{
   display:inline-block; margin-top:var(--sp-2);
   border:1px solid rgba(111,227,255,.5); color:var(--ice);
@@ -216,7 +215,6 @@ input#labelFilter:focus{border-color:var(--pink-border); outline:none}
   margin-inline:auto;
 }
 .qr-box img,.qr-box canvas{width:100%!important; height:100%!important; display:block}
-.label-name{font-size:13px; font-weight:700; text-align:center; line-height:1.5}
 .label-code{
   font-size:11.5px; font-weight:600; letter-spacing:.05em;
   border:1px solid #111114; border-radius:var(--pill);
@@ -278,7 +276,6 @@ pre#cfgCode{
   #labelGrid[data-size="m"] .qr-box{width:30mm; height:30mm}
   #labelGrid[data-size="l"] .qr-box{width:42mm; height:42mm}
   .label{border:1px solid #C9C9D2; border-radius:4mm; padding:3mm 2mm 2.5mm}
-  .label-name{font-size:3.4mm}
   .label-code{font-size:3mm; color:#111}
   .label-brand{font-size:2.8mm}
 }
@@ -356,7 +353,6 @@ pre#cfgCode{
         </div>
         <div class="state" id="stResult" hidden>
           <svg class="scan-logo" viewBox="0 0 240 240" role="img" aria-label="لوگوی نئونی پرنسا"><use href="#neonLogo"/></svg>
-          <h1 class="p-name" id="pName"></h1>
           <div class="chip" id="pCode"></div>
           <div class="price-line">
             <span class="price" id="pPrice"></span>
@@ -485,7 +481,7 @@ pre#cfgCode{
         <div class="step-num">۵</div>
         <div>
           <h3>برچسب تست</h3>
-          <p>در تب «تولید برچسب» دکمهٔ <code>دریافت از گوگل‌شیت</code> را بزنید تا کالاها بیایند، با جست‌وجو فقط یکی را نگه دارید، چاپ کنید و با گوشی اسکن کنید. اگر صفحهٔ قیمت با نام و کد و قیمت درست آمد، همه‌چیز آماده است.</p>
+          <p>در تب «تولید برچسب» دکمهٔ <code>دریافت از گوگل‌شیت</code> را بزنید تا کالاها بیایند، با جست‌وجو فقط یکی را نگه دارید، چاپ کنید و با گوشی اسکن کنید. اگر صفحهٔ قیمت با کد و قیمت درست آمد، همه‌چیز آماده است.</p>
         </div>
       </div>
       <div class="step">
@@ -616,7 +612,6 @@ async function fetchProducts(){
   return parseTable(await res.text());
 }
 function renderProduct(p){
-  $('#pName').textContent = p.name;
   const chip = $('#pCode');
   if (p.code){ chip.hidden = false; chip.textContent = 'کد ' + p.code; } else chip.hidden = true;
   const priceEl = $('#pPrice'), unitEl = $('#pUnit');
@@ -699,10 +694,9 @@ function buildLabels(){
         correctLevel: QRCode.CorrectLevel.M
       });
     }catch(e){}
-    const nm = document.createElement('div'); nm.className = 'label-name'; nm.textContent = p.name;
     const cd = document.createElement('div'); cd.className = 'label-code'; cd.textContent = p.code || '';
     const br = document.createElement('div'); br.className = 'label-brand'; br.textContent = 'Peransa';
-    lab.append(qr, nm, cd, br);
+    lab.append(qr, cd, br);
     frag.appendChild(lab);
   }
   grid.appendChild(frag);
